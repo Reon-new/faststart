@@ -73,6 +73,52 @@
                     Home
                 </a>
             </li>
+            {% if user.role != 'staff' %}
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/rentals') }}"
+                   href="{{ url_for('user_rentals_view') }}">
+                    <span class="material-symbols-outlined me-2">receipt_long</span>
+                    My Rentals
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path == '/listings/new' }}"
+                   href="{{ url_for('new_listing_view') }}">
+                    <span class="material-symbols-outlined me-2">add_circle</span>
+                    Add a Game
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/my-listings') }}"
+                   href="{{ url_for('my_listings_view') }}">
+                    <span class="material-symbols-outlined me-2">inventory_2</span>
+                    My Listings
+                </a>
+            </li>
+            {% endif %}
+            {% if user.role == 'staff' %}
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/staff/listings') }}"
+                   href="{{ url_for('staff_listings_view') }}">
+                    <span class="material-symbols-outlined me-2">fact_check</span>
+                    Listing Requests
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/staff/rentals') }}"
+                   href="{{ url_for('staff_rentals_view') }}">
+                    <span class="material-symbols-outlined me-2">pending_actions</span>
+                    Rental Requests
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/staff/returns') }}"
+                   href="{{ url_for('staff_returns_view') }}">
+                    <span class="material-symbols-outlined me-2">assignment_return</span>
+                    Return Requests
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item mt-auto">
                 <a class="nav-link d-flex align-items-center text-danger" href="{{ url_for('logout') }}">
                     <span class="material-symbols-outlined me-2">logout</span>

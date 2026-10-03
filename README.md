@@ -55,6 +55,8 @@ cp .env.example .env
 
 The default configuration uses a local SQLite database. Set `SECRET_KEY` before deployment. `CONFIG_PASSWORD` enables the optional configuration page.
 
+The game rental prompt supports hosted Stripe Checkout and PayPal Checkout. Add `STRIPE_SECRET_KEY` using a Stripe test secret key, and/or configure `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET` for a PayPal sandbox app. PayPal uses the sandbox API by default; set `PAYPAL_API_BASE_URL` to `https://api-m.paypal.com` for a live integration. Payment choices remain disabled until their credentials are configured. The app verifies the provider payment before saving the payment and rental records.
+
 ## Run locally
 
 Initialize the database and seed demo users:
@@ -69,6 +71,7 @@ Demo accounts:
 | --- | --- | --- |
 | `bob` | `bobpass` | regular_user |
 | `admin` | `adminpass` | admin |
+| `staff` | `staffpass` | staff (local development only) |
 
 Start the development server:
 

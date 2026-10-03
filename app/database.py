@@ -3,8 +3,9 @@ import threading
 import time
 from contextlib import contextmanager
 
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import DBAPIError, OperationalError, ProgrammingError
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
 from app.config import get_settings
 
@@ -37,6 +38,35 @@ def create_db_and_tables() -> None:
     import app.models  # noqa: F401
 
     SQLModel.metadata.create_all(engine)
+    listing_columns = {column["name"] for column in inspect(engine).get_columns("listing")}
+    if "confirmed" not in listing_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE listing "
+                    "ADD COLUMN confirmed BOOLEAN NOT NULL DEFAULT TRUE"
+                )
+            )
+    rental_columns = {column["name"] for column in inspect(engine).get_columns("rental")}
+    if "confirmed" not in rental_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE rental "
+                    "ADD COLUMN confirmed BOOLEAN NOT NULL DEFAULT TRUE"
+                )
+            )
+    rental_columns = {column["name"] for column in inspect(engine).get_columns("rental")}
+    if "return_requested_date" not in rental_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE rental ADD COLUMN return_requested_date DATE NULL")
+            )
+    if "return_requested_date" not in rental_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE rental ADD COLUMN return_requested_date DATE NULL")
+            )
 
 
 def drop_all() -> None:

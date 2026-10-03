@@ -1,0 +1,120 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Add a Game{% endblock %}
+
+{% block subpage_content %}
+<div class="container-fluid py-2">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Add a game for rent</h1>
+    <p class="text-muted mb-0">Enter the game details and your rental terms.</p>
+  </div>
+
+  <form id="listing-form" class="border rounded-2 bg-white p-3 p-md-4" novalidate>
+    <div class="row g-3">
+      <div class="col-12 col-md-8">
+        <label class="form-label" for="title">Game title</label>
+        <input class="form-control" id="title" name="title" required maxlength="160">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="platform">Platform</label>
+        <select class="form-select" id="platform" name="platform" required>
+          <option value="">Choose a platform</option>
+          <option value="NSW">NSW</option>
+          <option value="PS5">PS5</option>
+          <option value="XBOX">XBOX</option>
+          <option value="PC">PC</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="rating">Rating</label>
+        <input class="form-control" id="rating" name="rating" value="E" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="genre">Genre</label>
+        <input class="form-control" id="genre" name="genre">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="condition">Condition</label>
+        <select class="form-select" id="condition" name="condition" required>
+          <option value="new">New</option>
+          <option value="excellent">Excellent</option>
+          <option value="good" selected>Good</option>
+          <option value="fair">Fair</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="price">Rental price (USD)</label>
+        <input class="form-control" id="price" name="price" type="number" min="0.01" step="0.01" required>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="boxart">Box art URL <span class="text-muted">(optional)</span></label>
+        <input class="form-control" id="boxart" name="boxart" type="url">
+      </div>
+    </div>
+    <div id="listing-status" class="small mt-3" role="status" aria-live="polite"></div>
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <a class="btn btn-outline-secondary" href="{{ url_for('my_listings_view') }}">Cancel</a>
+      <button class="btn btn-primary" type="submit">Create listing</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block subpage_scripts %}
+<script>
+  const listingForm = document.getElementById("listing-form");
+  listingForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!listingForm.reportValidity()) return;
+
+    const submitButton = listingForm.querySelector("button[type='submit']");
+    const status = document.getElementById("listing-status");
+    const formData = new FormData(listingForm);
+    const price = Number(formData.get("price"));
+    if (!Number.isFinite(price) || price <= 0) {
+      status.className = "small mt-3 text-danger";
+      status.textContent = "Enter a rental price greater than zero.";
+      return;
+    }
+
+    submitButton.disabled = true;
+    status.className = "small mt-3 text-muted";
+    status.textContent = "Creating your listing...";
+    let gameCreated = false;
+    try {
+      const gameResponse = await fetch("/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: formData.get("title").trim(),
+          platform: formData.get("platform"),
+          rating: formData.get("rating").trim(),
+          genre: formData.get("genre").trim() || null,
+          boxart: formData.get("boxart").trim() || null,
+        }),
+      });
+      const game = await gameResponse.json().catch(() => ({}));
+      if (!gameResponse.ok) throw new Error(game.detail || "Could not create the game.");
+      gameCreated = true;
+
+      const listingResponse = await fetch("/listings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game_id: game.id,
+          condition: formData.get("condition"),
+          price,
+        }),
+      });
+      const listing = await listingResponse.json().catch(() => ({}));
+      if (!listingResponse.ok) throw new Error(listing.detail || "Could not create the listing.");
+      window.location.assign("/my-listings");
+    } catch (error) {
+      submitButton.disabled = false;
+      status.className = "small mt-3 text-danger";
+      status.textContent = gameCreated
+        ? `The game was added, but the listing could not be created: ${error.message}`
+        : error.message || "Could not create the game.";
+    }
+  });
+</script>
+{% endblock %}

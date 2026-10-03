@@ -3,7 +3,118 @@
 
 {% block subpage_content %}
 <div class="container-fluid py-2">
-  <h1 class="h4 mb-2">Home</h1>
-  <p class="text-muted mb-0">Workflow screens replace this shell in Phase 5 implement.</p>
+  <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+    <div>
+      <h1 class="h4 mb-1">Browse games</h1>
+      <p class="text-muted mb-0">Available games listed for rent.</p>
+    </div>
+    <form method="get" action="{{ url_for('user_home_view') }}" class="d-flex align-items-end gap-2">
+      <div>
+        <label class="form-label mb-1" for="platform">Platform</label>
+        <select class="form-select" name="platform" id="platform">
+          <option value="">All platforms</option>
+          {% for item in platforms %}
+          <option value="{{ item }}" {{ 'selected' if selected_platform == item }}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Filter</button>
+    </form>
+  </div>
+
+  {% if listings %}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+    {% for listing in listings %}
+    <div class="col">
+      <article class="h-100 border rounded-2 bg-white p-3">
+        <button class="btn w-100 text-start p-0" type="button"
+                data-bs-toggle="modal" data-bs-target="#game-modal-{{ listing.id }}"
+                aria-label="View details for {{ listing.game.title }}">
+          <span class="d-flex justify-content-between align-items-start gap-3">
+            <span>
+              <span class="d-block h6 mb-1">{{ listing.game.title }}</span>
+              <span class="d-block text-muted small">{{ listing.game.platform }} · {{ listing.condition|title }} condition</span>
+            </span>
+            <span class="fw-semibold text-nowrap">${{ '%.2f'|format(listing.price) }}</span>
+          </span>
+        </button>
+      </article>
+
+    <div class="modal fade" id="game-modal-{{ listing.id }}" tabindex="-1"
+         aria-labelledby="game-modal-title-{{ listing.id }}" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h2 class="modal-title h5 mb-1" id="game-modal-title-{{ listing.id }}">{{ listing.game.title }}</h2>
+              <p class="small text-muted mb-0">Game and listing details</p>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <dl class="row mb-0">
+              <dt class="col-5 text-muted">Game ID</dt>
+              <dd class="col-7">{{ listing.game.id }}</dd>
+              <dt class="col-5 text-muted">Platform</dt>
+              <dd class="col-7">{{ listing.game.platform }}</dd>
+              <dt class="col-5 text-muted">Rating</dt>
+              <dd class="col-7">{{ listing.game.rating }}</dd>
+              <dt class="col-5 text-muted">Genre</dt>
+              <dd class="col-7">{{ listing.game.genre or 'Not specified' }}</dd>
+              <dt class="col-5 text-muted">Box art</dt>
+              <dd class="col-7">{{ listing.game.boxart or 'Not provided' }}</dd>
+              <dt class="col-5 text-muted">Listing ID</dt>
+              <dd class="col-7">{{ listing.id }}</dd>
+              <dt class="col-5 text-muted">Condition</dt>
+              <dd class="col-7">{{ listing.condition|title }}</dd>
+              <dt class="col-5 text-muted">Price</dt>
+              <dd class="col-7">${{ '%.2f'|format(listing.price) }}</dd>
+              <dt class="col-5 text-muted">Availability</dt>
+              <dd class="col-7">{{ 'Available' if listing.available else 'Unavailable' }}</dd>
+              <dt class="col-5 text-muted">Listed by</dt>
+              <dd class="col-7 mb-0">{{ listing.owner.username if listing.owner else 'Marketplace' }}</dd>
+            </dl>
+          </div>
+          <div class="modal-footer flex-column align-items-stretch">
+            <button class="btn btn-primary align-self-end" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#payment-options-{{ listing.id }}"
+                    aria-expanded="false" aria-controls="payment-options-{{ listing.id }}">
+              Rent this game
+            </button>
+            <div class="collapse w-100" id="payment-options-{{ listing.id }}">
+              <div class="border-top pt-3 mt-2">
+                <p class="small fw-semibold mb-2">Choose a payment method</p>
+                <div class="d-flex flex-wrap gap-2">
+                  <form method="post" action="{{ url_for('begin_checkout', provider='stripe') }}">
+                    <input type="hidden" name="listing_id" value="{{ listing.id }}">
+                    <button class="btn btn-outline-secondary" type="submit" {% if not stripe_enabled %}disabled{% endif %}>
+                      Pay with Stripe
+                    </button>
+                  </form>
+                  <form method="post" action="{{ url_for('begin_checkout', provider='paypal') }}">
+                    <input type="hidden" name="listing_id" value="{{ listing.id }}">
+                    <button class="btn btn-outline-secondary" type="submit" {% if not paypal_enabled %}disabled{% endif %}>
+                      Pay with PayPal
+                    </button>
+                  </form>
+                </div>
+                {% if not stripe_enabled and not paypal_enabled %}
+                <p class="small text-muted mt-2 mb-0">Checkout is unavailable until a payment provider is configured.</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="border rounded-2 bg-white p-4 text-center">
+    <h2 class="h6">No games found</h2>
+    <p class="text-muted mb-0">There are no available listings for this platform.</p>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

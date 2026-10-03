@@ -1,0 +1,50 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Listing Requests{% endblock %}
+
+{% block subpage_content %}
+<div class="container-fluid py-2">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Listing Requests</h1>
+    <p class="text-muted mb-0">Review customer-submitted games before they appear in the catalog.</p>
+  </div>
+
+  {% if listings %}
+  <div class="table-responsive border rounded-2 bg-white">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Game</th>
+          <th scope="col">Customer</th>
+          <th scope="col">Condition</th>
+          <th scope="col">Price</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for listing in listings %}
+        <tr>
+          <td>
+            <span class="fw-semibold">{{ listing.game.title }}</span>
+            <span class="d-block small text-muted">{{ listing.game.platform }} · Rated {{ listing.game.rating }}{% if listing.game.genre %} · {{ listing.game.genre }}{% endif %}</span>
+          </td>
+          <td>{{ listing.owner.username if listing.owner else 'Unknown' }}</td>
+          <td>{{ listing.condition|title }}</td>
+          <td class="text-nowrap">${{ '%.2f'|format(listing.price) }}</td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('staff_confirm_listing', listing_id=listing.id) }}">
+              <button class="btn btn-sm btn-primary" type="submit">Confirm listing</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="border rounded-2 bg-white p-4 text-center">
+    <h2 class="h6">No listing requests</h2>
+    <p class="text-muted mb-0">New customer listings will appear here for review.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

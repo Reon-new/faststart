@@ -1,0 +1,56 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Rental Requests{% endblock %}
+
+{% block subpage_content %}
+<div class="container-fluid py-2">
+  <div class="mb-4">
+    <h1 class="h4 mb-1">Rental Requests</h1>
+    <p class="text-muted mb-0">Review customer rentals before confirming them.</p>
+  </div>
+
+  {% if rentals %}
+  <div class="table-responsive border rounded-2 bg-white">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Game</th>
+          <th scope="col">Customer</th>
+          <th scope="col">Requested</th>
+          <th scope="col">Payment</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rental in rentals %}
+        <tr>
+          <td>
+            <span class="fw-semibold">{{ rental.listing.game.title }}</span>
+            <span class="d-block small text-muted">{{ rental.listing.game.platform }} · {{ rental.listing.condition|title }} condition</span>
+          </td>
+          <td>{{ rental.customer.username }}</td>
+          <td class="text-nowrap">{{ rental.rental_date }}</td>
+          <td class="text-nowrap">
+            {% if rental.payment %}
+            ${{ '%.2f'|format(rental.payment.amount) }}
+            {% else %}
+            Not recorded
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <form method="post" action="{{ url_for('staff_confirm_rental', rental_id=rental.id) }}">
+              <button class="btn btn-sm btn-primary" type="submit">Confirm rental</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="border rounded-2 bg-white p-4 text-center">
+    <h2 class="h6">No rental requests</h2>
+    <p class="text-muted mb-0">New customer rentals will appear here for review.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

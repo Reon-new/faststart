@@ -64,6 +64,7 @@ async def unauthorized_redirect_handler(request: Request, exc: Exception):
     return templates.TemplateResponse(
         request=request,
         name="401.html",
+        status_code=status.HTTP_401_UNAUTHORIZED,
     )
 
 

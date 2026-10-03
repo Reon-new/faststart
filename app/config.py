@@ -1,6 +1,6 @@
-from functools import lru_cache
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 
 from pydantic import field_validator
@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     config_password: str = ""
     jwt_algorithm: str = "HS256"
     jwt_access_token_expires: int = 30
+    stripe_secret_key: str = ""
+    paypal_client_id: str = ""
+    paypal_client_secret: str = ""
+    paypal_api_base_url: str = "https://api-m.sandbox.paypal.com"
     app_host: str = "0.0.0.0"
     app_port: int = 5000
     db_pool_size: int = 10

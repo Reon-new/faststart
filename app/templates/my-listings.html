@@ -1,0 +1,62 @@
+{% extends "authenticated-base.html" %}
+{% block title %}My Listings{% endblock %}
+
+{% block subpage_content %}
+<div class="container-fluid py-2">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+      <h1 class="h4 mb-1">My Listings</h1>
+      <p class="text-muted mb-0">Games you have listed for rent.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('new_listing_view') }}">Add a Game</a>
+  </div>
+
+  {% if listings %}
+  <div class="table-responsive border rounded-2 bg-white">
+    <table class="table align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Game</th>
+          <th scope="col">Condition</th>
+          <th scope="col">Rental price</th>
+          <th scope="col">Review</th>
+          <th scope="col">Availability</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for listing in listings %}
+        <tr>
+          <td>
+            <span class="fw-semibold">{{ listing.game.title }}</span>
+            <span class="d-block small text-muted">{{ listing.game.platform }} · Rated {{ listing.game.rating }}</span>
+          </td>
+          <td>{{ listing.condition|title }}</td>
+          <td class="text-nowrap">${{ '%.2f'|format(listing.price) }}</td>
+          <td>
+            {% if listing.confirmed %}
+            <span class="badge text-bg-success">Approved</span>
+            {% else %}
+            <span class="badge text-bg-warning">Pending staff review</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if listing.available %}
+            <span class="badge text-bg-success">Available</span>
+            {% else %}
+            <span class="badge text-bg-secondary">Rented</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="border rounded-2 bg-white p-4 text-center">
+    <h2 class="h6">No listings yet</h2>
+    <p class="text-muted mb-3">Games you add for rent will appear here.</p>
+    <a class="btn btn-primary" href="{{ url_for('new_listing_view') }}">Add a Game</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

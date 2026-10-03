@@ -22,6 +22,62 @@ def _ensure_models_loaded() -> None:
     import app.models  # noqa: F401
 
 
+def _seed_demo_rental(
+    session,
+    customer,
+    game_title: str = "Mario Kart 8 Deluxe",
+    platform: str = "NSW",
+) -> bool:
+    from sqlmodel import select
+
+    from app.models.domain import Game, Listing, Payment, Rental
+
+    game = session.exec(
+        select(Game).where(
+            Game.title == game_title,
+            Game.platform == platform,
+        )
+    ).first()
+    if game is None or customer is None:
+        return False
+
+    listing = session.exec(
+        select(Listing)
+        .where(Listing.game_id == game.id)
+        .order_by(Listing.id)
+    ).first()
+    if listing is None:
+        return False
+
+    existing_rental = session.exec(
+        select(Rental).where(
+            Rental.listing_id == listing.id,
+            Rental.customer_id == customer.id,
+        )
+    ).first()
+    if existing_rental:
+        listing.available = False
+        session.add(listing)
+        return False
+    if not listing.available:
+        return False
+
+    payment = Payment(customer_id=customer.id, amount=listing.price)
+    session.add(payment)
+    session.flush()
+    session.add(
+        Rental(
+            listing_id=listing.id,
+            customer_id=customer.id,
+            payment_id=payment.id,
+            confirmed=True,
+        )
+    )
+    listing.available = False
+    session.add(listing)
+    return True
+
+
 def cmd_init(args: argparse.Namespace) -> None:
     """Create database tables (drops existing by default) and seed demo users."""
     from app.config import get_settings
@@ -47,12 +103,17 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 
 def cmd_seed(args: argparse.Namespace) -> None:
-    """Insert demo users.
+    """Insert demo users and marketplace content.
 
     bob / bobpass       (regular_user)
     admin / adminpass   (admin)
     """
+    from sqlmodel import select
+
+    from app.config import get_settings
     from app.database import ensure_db_and_tables, get_cli_session
+    from app.models.domain import Game, Listing, Staff
+    from app.models.user import User, UserBase
     from app.repositories.user import UserRepository
     from app.schemas.user import AdminCreate, RegularUserCreate
     from app.utilities.security import encrypt_password
@@ -64,9 +125,14 @@ def cmd_seed(args: argparse.Namespace) -> None:
         ("bob", "bob@example.com", "bobpass", "regular_user"),
         ("admin", "admin@example.com", "adminpass", "admin"),
     ]
+    if get_settings().env.lower() not in {"prod", "production"}:
+        demo_users.append(("staff", "staff@example.com", "staffpass", "staff"))
 
     created = 0
     skipped = 0
+    games_created = 0
+    listings_created = 0
+    rentals_created = 0
     with get_cli_session() as session:
         repo = UserRepository(session)
         for username, email, password, role in demo_users:
@@ -74,7 +140,12 @@ def cmd_seed(args: argparse.Namespace) -> None:
                 print(f"  skip  {username} (already exists)")
                 skipped += 1
                 continue
-            payload_cls = AdminCreate if role == "admin" else RegularUserCreate
+            if role == "admin":
+                payload_cls = AdminCreate
+            elif role == "staff":
+                payload_cls = UserBase
+            else:
+                payload_cls = RegularUserCreate
             repo.create(
                 payload_cls(
                     username=username,
@@ -86,7 +157,68 @@ def cmd_seed(args: argparse.Namespace) -> None:
             print(f"  create {username} ({role})")
             created += 1
 
+        staff_user = repo.get_by_username("staff")
+        if staff_user and not session.exec(
+            select(Staff).where(Staff.user_id == staff_user.id)
+        ).first():
+            session.add(Staff(user_id=staff_user.id))
+
+        owner = session.exec(select(User).where(User.username == "bob")).first()
+        sample_games = [
+            ("Mario Kart 8 Deluxe", "E", "NSW", "Racing", "excellent", 39.99),
+            ("The Legend of Zelda: Tears of the Kingdom", "E10+", "NSW", "Adventure", "good", 49.99),
+            ("Horizon Forbidden West", "T", "PS5", "Action", "good", 34.99),
+            ("Super Smash Bros. Ultimate", "E10+", "NSW", "Fighting", "excellent", 44.99),
+            ("Elden Ring", "M", "PS5", "Action RPG", "good", 32.99),
+            ("Minecraft", "E10+", "PC", "Sandbox", "good", 19.99),
+        ]
+        for title, rating, platform, genre, condition, price in sample_games:
+            game = session.exec(
+                select(Game).where(Game.title == title, Game.platform == platform)
+            ).first()
+            if game is None:
+                game = Game(
+                    title=title,
+                    rating=rating,
+                    platform=platform,
+                    genre=genre,
+                )
+                session.add(game)
+                session.flush()
+                games_created += 1
+
+            existing_listing = session.exec(
+                select(Listing).where(
+                    Listing.game_id == game.id,
+                    Listing.owner_id == (owner.id if owner else None),
+                    Listing.condition == condition,
+                    Listing.price == price,
+                )
+            ).first()
+            if existing_listing is None:
+                session.add(
+                    Listing(
+                        game_id=game.id,
+                        owner_id=owner.id if owner else None,
+                        condition=condition,
+                        price=price,
+                        confirmed=True,
+                    )
+                )
+                listings_created += 1
+        sample_rentals = [
+            ("Mario Kart 8 Deluxe", "NSW"),
+            ("The Legend of Zelda: Tears of the Kingdom", "NSW"),
+        ]
+        rentals_created = sum(
+            _seed_demo_rental(session, owner, game_title, platform)
+            for game_title, platform in sample_rentals
+        )
+        session.commit()
+
     print(f"Seed done — created {created}, skipped {skipped}.")
+    print(f"Marketplace seed — created {games_created} games, {listings_created} listings.")
+    print(f"Rental seed — created {rentals_created} paid rental(s).")
     print("Login with bob/bobpass or admin/adminpass")
 
 
@@ -219,7 +351,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_seed = sub.add_parser(
         "seed",
-        help="Insert demo users only (idempotent; also runs as part of init)",
+        help="Insert demo users and marketplace content (idempotent)",
     )
     p_seed.set_defaults(func=cmd_seed)
 
